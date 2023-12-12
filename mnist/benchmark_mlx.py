@@ -11,7 +11,7 @@ import mlx.optimizers as optim
 
 import mnist
 
-from benchmark import TrainBenchmark
+from benchmark import TrainBenchmark, TestBenchmark
 
 
 class MLP(nn.Module):
@@ -62,9 +62,9 @@ def main(num_iters, num_epochs=10):
     # Load the data
     train_images, train_labels, test_images, test_labels = map(mx.array, mnist.mnist())
 
-    benchmark = TrainBenchmark(num_iters)
+    benchmark_train = TrainBenchmark(num_iters)
 
-    for _ in benchmark:
+    for _ in benchmark_train:
         # Load the model
         model = MLP(num_layers, train_images.shape[-1], hidden_dim, num_classes)
         mx.eval(model.parameters())
@@ -80,14 +80,21 @@ def main(num_iters, num_epochs=10):
                 mx.eval(model.parameters(), optimizer.state)
             accuracy = eval_fn(model, test_images, test_labels)
             toc = time.perf_counter()
-            benchmark.add_epoch(toc - tic)
+            benchmark_train.add_epoch(toc - tic)
             print(
                 f"Epoch {e}: Test accuracy {accuracy.item():.3f},"
                 f" Time {toc - tic:.3f} (s)"
             )
 
+    benchmark_test = TestBenchmark(num_iters)
+
+    for i in benchmark_test:
+        accuracy = eval_fn(model, test_images, test_labels)
+        print(f"Iteration {i}: Test accuracy {accuracy.item():.3f}")
+
     device = mx.default_device().type
-    benchmark.write_to_csv(f'mlx-{device}-n{num_iters}-e{num_epochs}.csv')
+    benchmark_train.write_to_csv(f'results/mlx-train-{device}-n{num_iters}-e{num_epochs}.csv')
+    benchmark_test.write_to_csv(f'results/mlx-test-{device}-n{num_iters}.csv')
 
 
 if __name__ == "__main__":
