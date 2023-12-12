@@ -6,7 +6,7 @@
 Apple recently released the [MLX framework](https://github.com/ml-explore/mlx),
 a Python array and machine learning framework designed for Apple Silicon Macs (M1, M2, etc).
 
-Apple touts that MLX takes advantage of Apple Silicon's [unified memory architecture](https://en.wikipedia.org/wiki/Graphics_processing_unit#Integrated_graphics),
+Apple touts that MLX [takes advantage](https://github.com/ml-explore/mlx/issues/12#issuecomment-1843956313) of Apple Silicon's [unified memory architecture](https://en.wikipedia.org/wiki/Graphics_processing_unit#Integrated_graphics),
 enabling training and inference on CPU and GPU without incurring the cost of copying data.
 This may make a larger difference with smaller models, where the constant-time overhead of
 data copying may negate any parameter count-dependent gains in computation.
