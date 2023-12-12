@@ -78,6 +78,10 @@ if __name__ == "__main__":
 
     train_images, train_labels, test_images, test_labels = map(to_tensor, mnist.mnist())
 
+    # Move test images and labels to target device ahead-of-time
+    test_images = test_images.to(device)
+    test_labels = test_labels.to(device)
+
     # Benchmark training
     benchmark_train = TrainBenchmark(num_iters)
 
@@ -106,7 +110,7 @@ if __name__ == "__main__":
     benchmark_test = TestBenchmark(num_iters)
 
     for i in benchmark_test:
-        accuracy = eval_fn(model, test_images, test_labels)
+        accuracy = eval_fn(model, X, y)
         print(f"Iteration {i}: Test accuracy {accuracy.item():.3f}")
 
     benchmark_train.write_to_csv(f'results/torch-train-{device}-n{num_iters}-e{num_epochs}.csv')
