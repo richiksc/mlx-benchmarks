@@ -48,12 +48,12 @@ def batch_iterate(batch_size, X, y):
         yield X[ids], y[ids]
 
 
-def main(num_iters, num_epochs=10):
+def main(num_iters, num_epochs=10, vary_batch_size=False):
     seed = 0
     num_layers = 2
     hidden_dim = 32
     num_classes = 10
-    batch_size = 256
+    init_batch_size = 16 if vary_batch_size else 256
 
     learning_rate = 1e-1
 
@@ -62,9 +62,9 @@ def main(num_iters, num_epochs=10):
     # Load the data
     train_images, train_labels, test_images, test_labels = map(mx.array, mnist.mnist())
 
-    benchmark_train = TrainBenchmark(num_iters)
+    benchmark_train = TrainBenchmark(init_batch_size, vary_batch_size, num_iters)
 
-    for _ in benchmark_train:
+    for _, batch_size in benchmark_train:
         # Load the model
         model = MLP(num_layers, train_images.shape[-1], hidden_dim, num_classes)
         mx.eval(model.parameters())
@@ -93,7 +93,7 @@ def main(num_iters, num_epochs=10):
         print(f"Iteration {i}: Test accuracy {accuracy.item():.3f}")
 
     device = mx.default_device().type
-    benchmark_train.write_to_csv(f'results/mlx-train-{device}-n{num_iters}-e{num_epochs}.csv')
+    benchmark_train.write_to_csv(f'results/mlx-train-{device}-n{num_iters}-e{num_epochs}{"-vbatch" if vary_batch_size else ""}.csv')
     benchmark_test.write_to_csv(f'results/mlx-test-{device}-n{num_iters}.csv')
 
 
@@ -102,7 +102,8 @@ if __name__ == "__main__":
     parser.add_argument("--gpu", action="store_true", help="Use the Metal back-end.")
     parser.add_argument("-n", type=int, default=10, help="Number of benchmark iterations.")
     parser.add_argument("-e", type=int, default=10, help="Number of training epochs per iteration.")
+    parser.add_argument("--batch-size", action="store_true", help="Double batch size every iteration.")
     args = parser.parse_args()
     if not args.gpu:
         mx.set_default_device(mx.cpu)
-    main(args.n, num_epochs=args.e)
+    main(args.n, num_epochs=args.e, vary_batch_size=args.batch_size)

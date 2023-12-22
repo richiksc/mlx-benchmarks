@@ -100,6 +100,37 @@ I've excluded this data point when calculating throughput.
 
 ![Inference throughput](assets/throughput-inference-mnist.png)
 
+**Batch size variation:**
+
+The fact that there was a performance penalty for using the GPU surprised me.
+A little Googling showed that even with no data movement overhead, small models with
+small batch sizes are unable to take full advantage of the GPU's parallelism.
+In addition, [according to @neurolabusc's benchmarks](https://github.com/neurolabusc/Metal), the AMX2 instruction set extensions on Apple Silicon, which run on the
+dedicated Apple Matrix Coprocessor, make individual matrix multiplication ops faster when
+run "on the CPU". I wanted to explore if the GPU caught up at larger batch sizes.
+
+![Average epoch times vs. batch size](assets/vbatch.png)
+
+There are large gaps between CPU and GPU on both MLX and PyTorch at small batch sizes.
+I've cropped the y-axis, as it would be impossible to view the trends otherwise.
+(PyTorch MPS takes 11840 ms at a batch size of 16!)
+
+PyTorch claims a small performance penalty over MLX on the CPU at smaller batch sizes,
+but MLX GPU performance is dramatically better than PyTorch GPU at smaller batch sizes.
+
+However, as we increase batch size exponentially, the performance of CPU and GPU converge,
+and so do the differences between MLX and PyTorch. Let's zoom in even closer, limiting
+our window to batch size > 512 and epoch time < 500 ms.
+
+![Epoch times vs batch size, cropped](assets/vbatch-cropped.png)
+
+MLX CPU and GPU performance seems to asymptotically converge, with the GPU
+never overtaking the CPU for the MNIST model.
+
+MLX CPU performance overtakes PyTorch CPU at batch sizes > 256,
+and PyTorch's GPU backend finally beats the CPU at extremely
+large batch sizes of 8192+, matching MLX CPU's performance at 16384.
+
 ### Conclusions
 
 Training performance with both MLX and PyTorch on the M1 CPU are virtually indistinguishable, and MLX provides no gains when training on the CPU. Throughput is near identical and epoch times are consistent and stable on both.
@@ -109,6 +140,12 @@ Training the model on the M1's GPU with severely limits throughput on both PyTor
 PyTorch GPU spent significantly more time on the CPU while training and had lower GPU utilization, meaning it could not make full use of the M1's GPU, likely due to data movement overhead or lack of optimization. It also had more spikes in epoch time, perhaps due to PyTorch performing some form of garbage collection on previously moved minibatches of data.
 
 When it comes to inference, MLX makes modest gains over PyTorch on the CPU. However, with inference, the M1 GPU is able to deliver noticeable performance gains over the CPU. With MLX, inference throughput was ~1.5x the CPU, but PyTorch on the GPU blew both MLX GPU and PyTorch CPU out of the water, with 3.6x the throughput of PyTorch CPU and 2.1x the throughput of MLX GPU. However, this does not take into account data movement, as the test dataset is not batched for inference and inference is performed on all 10k images at once. Therefore, the test dataset is moved once before the inference loop.
+
+In general, larger data batches and larger models scale better
+to take advantage of performance boosts by utilizing the GPU or using MLX over PyTorch.
+
+[Oliver Wehren's blog post](https://owehrens.com/whisper-nvidia-rtx-4090-vs-m1pro-with-mlx/) reports that large models like OpenAI Whisper train much faster
+on MLX GPU compared to PyTorch on large GPUs like the M1 Pro, M3 Max, and M3 Ultra.
 
 #### Potential improvements
 

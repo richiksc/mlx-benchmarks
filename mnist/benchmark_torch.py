@@ -53,6 +53,7 @@ if __name__ == "__main__":
     parser.add_argument("--gpu", action="store_true", help="Use the Metal back-end.")
     parser.add_argument("-n", type=int, default=10, help="Number of benchmark iterations.")
     parser.add_argument("-e", type=int, default=10, help="Number of training epochs per iteration.")
+    parser.add_argument("--batch-size", action="store_true", help="Double batch size every iteration.")
     args = parser.parse_args()
 
     if not args.gpu:
@@ -64,7 +65,8 @@ if __name__ == "__main__":
     num_layers = 2
     hidden_dim = 32
     num_classes = 10
-    batch_size = 256
+    vary_batch_size = args.batch_size
+    init_batch_size = 16 if vary_batch_size else 256
     num_iters = args.n
     num_epochs = args.e
     learning_rate = 1e-1
@@ -83,9 +85,9 @@ if __name__ == "__main__":
     test_labels = test_labels.to(device)
 
     # Benchmark training
-    benchmark_train = TrainBenchmark(num_iters)
+    benchmark_train = TrainBenchmark(init_batch_size, vary_batch_size, num_iters)
 
-    for _ in benchmark_train:
+    for _, batch_size in benchmark_train:
         # Load the model
         model = MLP(num_layers, train_images.shape[-1], hidden_dim, num_classes).to(device)
         opt = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.0)
@@ -113,5 +115,5 @@ if __name__ == "__main__":
         accuracy = eval_fn(model, X, y)
         print(f"Iteration {i}: Test accuracy {accuracy.item():.3f}")
 
-    benchmark_train.write_to_csv(f'results/torch-train-{device}-n{num_iters}-e{num_epochs}.csv')
+    benchmark_train.write_to_csv(f'results/torch-train-{device}-n{num_iters}-e{num_epochs}{"-vbatch" if vary_batch_size else ""}.csv')
     benchmark_test.write_to_csv(f'results/torch-test-{device}-n{num_iters}.csv')
